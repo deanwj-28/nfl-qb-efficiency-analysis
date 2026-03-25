@@ -1,0 +1,161 @@
+---
+title: "QB Efficiency during 2023 NFL Season"
+author: "Dean Johnson"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: yes
+    toc_depth: 2
+    number_sections: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '2'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(warnings = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+
+setwd("C:/Users/deanw/Downloads")
+
+library(dplyr)
+library(ggplot2)
+
+data1 <- readRDS("play_by_play_2023.rds")
+
+```
+
+Filters for Pass Plays and top 15 QBs
+
+```{r}
+
+pass_plays <- data1 %>%
+  filter(
+    play_type == "pass",
+    !is.na(epa),
+    !is.na(passer_player_name)
+  )
+
+top_qbs <- pass_plays %>%
+  count(passer_player_name, sort = TRUE) %>%
+  top_n(15, n)
+
+qb_data  <- pass_plays %>%
+  filter(passer_player_name %in% top_qbs$passer_player_name)
+
+```
+
+QB Average EPA/play
+
+```{r}
+epa_summary <- qb_data %>%
+  group_by(passer_player_name) %>%
+  summarise(
+    plays = n(),
+    avg_epa = mean(epa)
+  ) %>%
+  arrange(desc(avg_epa))
+
+```
+
+Success Rate
+
+```{r}
+
+qb_data <- qb_data %>%
+  mutate(
+    success = case_when(
+      down == 1 & yards_gained >= 0.4 * ydstogo ~ 1,
+      down == 2 & yards_gained >= 0.6 * ydstogo ~ 1,
+      down %in% c(3, 4) & yards_gained >= ydstogo ~ 1,
+      TRUE ~ 0
+    )
+  )
+
+```
+
+Success Rate/QB
+
+```{r}
+
+success_summary <- qb_data %>%
+  group_by(passer_player_name) %>%
+  summarise(
+    success_rate = mean(success)
+  )
+
+```
+
+Situation Analysis (Red Zone and 3rd Down)
+
+```{r}
+
+redzone <- qb_data %>%
+  filter(yardline_100 <= 20)
+
+redzone_summary <- redzone %>%
+  group_by(passer_player_name) %>%
+  summarise(
+    redzone_epa = mean(epa),
+    redzone_success = mean(success)
+  )
+
+third_down <- qb_data %>%
+  filter(down == 3)
+
+third_summary <- third_down %>%
+  group_by(passer_player_name) %>%
+  summarise(
+    third_epa = mean(epa),
+    third_success = mean(success)
+  )
+
+```
+
+```{r}
+final_summary <- epa_summary %>%
+  left_join(success_summary, by = "passer_player_name") %>%
+  left_join(redzone_summary, by = "passer_player_name") %>%
+  left_join(third_summary, by = "passer_player_name")
+
+final_summary
+```
+
+Visualizations
+
+```{r}
+ggplot(final_summary, aes(x = reorder(passer_player_name, avg_epa), y = avg_epa)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "QB EPA per Play",
+    x = "Quarterback",
+    y = "EPA per Play"
+  )
+
+```
+
+```{r}
+ggplot(final_summary, aes(x = success_rate, y = avg_epa, label = passer_player_name)) +
+  geom_point() +
+  geom_text(nudge_y = 0.01) +
+  labs(
+    title = "QB Efficiency vs Consistency",
+    x = "Success Rate",
+    y = "EPA per Play"
+  )
+```
+
+Correlations
+
+```{r}
+cor(final_summary$avg_epa, final_summary$success_rate) # EPA vs Success Rate
+cor(final_summary$avg_epa, final_summary$plays) # EPA vs Number of Passing Plays
+cor(final_summary$plays, final_summary$success_rate) # Number of Passing Plays vs Success Rate
+
+```
+
+Conclusion
+
+In this analysis of the 2023 NFL season, only the top 15 quarterbacks in highest total passing plays were selected. There was very little correlation between the number of pass attempts and expected points added (EPA) (0.106) and success rate (0.266). With the least amount of passing plays of the selected QBs, Brock Purdy was the most efficient and successful quarterback, which played a large factor in his leading of the 49ers to the Super Bowl. At 0.274 his EPA per play was 0.114 more than the next quarterback's (Jordan Love), and his 53.3% success rate led the league as well. Only 4 of the top 15 QBs had a success rate above 50%: Purdy (53.3%), Prescott (51.8%), Goff (51.1%), and J. Allen (50.5%). Consequently, the teams of these QBs were all in the top 5 total offenses in the league. Additionally, there was a strong correlation between the success rate and the EPA, with a correlation coefficient of 0.92. This follows logically, as a successful play increases the likelihood of a team scoring.
