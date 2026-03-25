@@ -22,14 +22,14 @@ The goal of this analysis is to assess quarterback decision-making and effective
 **Key Visualizations**
 
 EPA per Play by Quarterback
-![EPA Chart](outputs/epa_bar_chart.png)
+![EPA Chart](epa_bar_chart.png)
 EPA vs Success Rate
-![EPA vs Success](outputs/epa_vs_success.png)
+![EPA vs Success](epa_vs_success.png)
 
 **Key Insights**
 
-	• Quarterbacks with high EPA per play tend to generate explosive plays that significantly increase scoring potential 
-	• Success rate highlights consistency, showing which quarterbacks sustain drives effectively 
+	• Quarterbacks with a high success rate tend to have higher EPA, as the correlation between the metrics is significantly high 
+	• Success rate highlights consistency, showing which quarterbacks sustain drives effectively, and this in turn influences the high impact of an offense
 	• Situational splits (3rd down, red zone) reveal performance under pressure and in high-leverage scenarios 
 
 **Project Structure**
